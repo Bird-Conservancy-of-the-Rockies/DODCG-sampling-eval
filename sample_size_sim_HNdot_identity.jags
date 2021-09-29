@@ -1,0 +1,61 @@
+
+      model{
+      
+      # Prior on lambda and psi
+#      lambda.mu ~ dunif(0,50)
+#      lambda.sd ~ dunif(0,50)
+#      gam.r<-pow(lambda.mu,2)/pow(lambda.sd,2)
+#      gam.lam<-(lambda.sd)/pow(lambda.sd,2)
+      for(i in 1:n.grid) {
+        lambda[i] ~ dgamma(0.1,0.1)
+      }
+
+
+      # Prior on theta
+      theta.mn~dunif(0,1000)
+      theta2<-pow(theta.mn,2)
+
+    
+      ###
+      ### Process model
+      ###
+
+      # Calculate sample Z and N
+      for(i in 1:n.pt) {
+#        Z.pt[i] ~ dbern(psi[grid.pt.ind[i]])
+        N.pt[i] ~ dpois(lambda[grid.pt.ind[i]]) #*Z.pt[i]
+        D.pt[i] <- N.pt[i]/area.circle
+      }
+      
+
+      ###
+      ### Observation model
+      ###
+      
+      # Calculate p and pi
+      for(k in 1:nG) {
+        int[k]<-theta2*(1-exp(-pow(breaks[k+1],2)/(2*theta2))) - theta2*(1-exp(-pow(breaks[k],2)/(2*theta2)))
+        p[k] <- 2*3.141593*int[k]/area.band[k]
+      
+        pi[k] <- p[k]*area.prop[k]
+        pic[k] <- pi[k]/pcap
+      
+      }
+      pcap <- sum(pi[])
+      piz <- 1-pcap
+      # Observation model
+      
+      for(i in 1:n.pt) {
+        y.sum[i]~dbinom(pcap,N.pt[i])
+      }
+
+
+      for(i in 1:nind) {
+       dclass[i] ~ dcat(pic[1:nG])
+      }
+#      dclass ~ dmulti(pic, nind)
+      
+      D.all<-mean(D.pt)
+  }
+      
+      

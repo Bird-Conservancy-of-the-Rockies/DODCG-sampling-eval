@@ -1,0 +1,68 @@
+
+      model{
+      
+      # Prior on lambda and psi
+      alpha ~ dnorm(0,0.01)
+      r.exp ~ dunif(0.25,1.75)
+      r <- log(r.exp)
+#      eps.sd ~ dunif(0,10)
+      for(i in 1:n.grid) {
+        for(t in 1:T) {
+#          eps[i,t] ~ dnorm(0,0.01) #pow(eps.sd,-2))
+          lambda[i,t] <- exp(alpha + r*(t-1)) # + eps[i,t])
+        }
+      }
+
+
+      # Prior on theta
+      theta.mn~dunif(0,1000)
+      theta2<-pow(theta.mn,2)
+
+    
+      ###
+      ### Process model
+      ###
+
+      # Calculate sample Z and N
+      for(i in 1:n.pt) {
+        for(t in 1:T) {
+          N.pt[i,t] ~ dpois(lambda[grid.pt.ind[i],t])
+          D.pt[i,t] <- N.pt[i,t]/area.circle
+        }
+      }
+      
+
+      ###
+      ### Observation model
+      ###
+      
+      # Calculate p and pi
+      for(k in 1:nG) {
+        int[k]<-theta2*(1-exp(-pow(breaks[k+1],2)/(2*theta2))) - theta2*(1-exp(-pow(breaks[k],2)/(2*theta2)))
+        p[k] <- 2*3.141593*int[k]/area.band[k]
+      
+        pi[k] <- p[k]*area.prop[k]
+        pic[k] <- pi[k]/pcap
+      
+      }
+      pcap <- sum(pi[])
+      piz <- 1-pcap
+      # Observation model
+      
+      for(i in 1:n.pt) {
+        for(t in 1:T) {
+          y.sum[i,t]~dbinom(pcap,N.pt[i,t])
+        }
+      }
+
+
+      for(i in 1:nind) {
+       dclass[i] ~ dcat(pic[1:nG])
+      }
+
+      for(t in 1:T) {
+        D.all[t]<-mean(D.pt[,t])
+      }
+  }
+      
+      
