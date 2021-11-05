@@ -11,9 +11,9 @@
       }
 
 
-      # Prior on theta
-      theta.mn~dunif(0,1000)
-      theta2<-pow(theta.mn,2)
+      # Prior on sigma
+      sigma.mn~dunif(0,1000)
+      sigma2<-pow(sigma.mn,2)
 
     
       ###
@@ -34,7 +34,7 @@
       
       # Calculate p and pi
       for(k in 1:nG) {
-        int[k]<-theta2*(1-exp(-pow(breaks[k+1],2)/(2*theta2))) - theta2*(1-exp(-pow(breaks[k],2)/(2*theta2)))
+        int[k]<-sigma2*(1-exp(-pow(breaks[k+1],2)/(2*sigma2))) - sigma2*(1-exp(-pow(breaks[k],2)/(2*sigma2)))
         p[k] <- 2*3.141593*int[k]/area.band[k]
       
         pi[k] <- p[k]*area.prop[k]
@@ -42,20 +42,21 @@
       
       }
       pcap <- sum(pi[])
-      piz <- 1-pcap
+      # piz <- 1-pcap # Doesn't seem to get used here.
       # Observation model
       
       for(i in 1:n.pt) {
         y.sum[i]~dbinom(pcap,N.pt[i])
+#        y.bin[i,1:nG] ~ dmultinom(pic[1:nG], y.sum[i])
       }
 
 
       for(i in 1:nind) {
        dclass[i] ~ dcat(pic[1:nG])
-      }
+     }
 #      dclass ~ dmulti(pic, nind)
       
-      D.all<-mean(D.pt)
+      D.all<-mean(D.pt) # Not using this anymore. Just using lambda estimates.
   }
       
       

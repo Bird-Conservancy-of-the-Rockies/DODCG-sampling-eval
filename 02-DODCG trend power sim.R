@@ -35,22 +35,22 @@ yrs <- c(16,31) #Number of years of sampling
 #yrs <- c(15,30) #Length of time for monitoring
 sample.freq <- c(1, 3, 5)
 ann.var <- c(0.1, 0.5) #Annual variation around trend line
-pts.per.grid <- 11 #Number of points in a grid
+pts.per.grid <- 15 #Number of points in a grid
 
 n.iter <- 100 #number of iterations
 
 ### Detection parameters
-cutoff <- 145 #Distance in meters
+cutoff <- 100 #Distance in meters
 area.circle <- pi*(cutoff/1000)^2 #area of point count circle in km2
 nG <- 10 #Number of distance classes
 breaks <- seq(0, cutoff, length.out=nG + 1) #Break points for distance classes
 area.band <- pi*breaks[-1]^2 - pi*breaks[-(nG+1)]^2
 area.prop <- area.band/sum(area.band)
 
-theta.true <- 50 #True half-normal shape parameter. Gives overall detection of 0.54 with 250m cutoff
+sigma.true <- 55 #True half-normal shape parameter. Gives overall detection of 0.49 with 145m cutoff
 
-int.true <- (theta.true^2*(1 - exp(-breaks[-1]^2/(2*theta.true^2))) -
-               theta.true^2*(1 - exp(-breaks[-(nG+1)]^2/(2*theta.true^2)))) #integral of half-normal function
+int.true <- (sigma.true^2*(1 - exp(-breaks[-1]^2/(2*sigma.true^2))) -
+               sigma.true^2*(1 - exp(-breaks[-(nG+1)]^2/(2*sigma.true^2)))) #integral of half-normal function
 p.true <- 2*pi*int.true/area.band #Complete half-normal calculations
 pi.true <- p.true*area.prop #Correct for availability
 overall.p.true <- sum(pi.true) #Overall detection probability
@@ -146,16 +146,16 @@ for(a in 1:length(alpha.true)) { #Density loop  1
                              area.circle=area.circle, nG=nG, breaks=breaks,
                              area.band=area.band, area.prop=area.prop, nind=length(dclass),
                              y.sum=y.sum, dclass=dclass, T=yrs.t)
-                #params <- c('alpha', 'r','eps.sd','theta.mn', 'pcap', 'p', 'D.all') # Doesn't seem like we need most of this....
+                #params <- c('alpha', 'r','eps.sd','sigma.mn', 'pcap', 'p', 'D.all') # Doesn't seem like we need most of this....
                 params <- c('r')
-                inits <- list(list('theta.mn' = 400, 'N.pt' = y.sum),
-                              list('theta.mn' = 400, 'N.pt' = y.sum),
-                              list('theta.mn' = 400, 'N.pt' = y.sum))
+                inits <- list(list('sigma.mn' = 400, 'N.pt' = N.true),
+                              list('sigma.mn' = 400, 'N.pt' = N.true),
+                              list('sigma.mn' = 400, 'N.pt' = N.true))
                 #              if(samp.n*yrs.t>=30) {mod.file='trend_sim_HNdot_RE.jags'}
                 #              if(samp.n*yrs.t<30) {mod.file='trend_sim_HNdot_noRE.jags'}
                 model.out <- jagsUI(data = data, parameters.to.save = params, inits = inits,
                                     model.file = str_c(scripts.loc, 'trend_sim_HNdot_noRE.jags'),
-                                    n.chains = 3, n.iter = 1000, n.burnin = 1000*0.5, n.thin = 1,
+                                    n.chains = 3, n.iter = 3000, n.burnin = 1000, n.thin = 1,
                                     parallel = TRUE, verbose = FALSE)
                 
                 # Populate r output row
@@ -183,10 +183,12 @@ for(a in 1:length(alpha.true)) { #Density loop  1
                 gc()
               } #close i loop
               
-              cat('Alpha = ',a,' of ',length(alpha.true), 'Het = ',h,' of ',length(Het.true),
+              cat('Alpha = ',a,' of ',length(alpha.true),
+                  ', Het = ',h,' of ',length(Het.true),
                   ', Annual var = ',v,' of ',length(ann.var),
-                  ', Trend = ',r,' of ',length(r.true),', n = ',n,' of ',length(sample.true),
-                  ', Frequency = ',f,' of ',length(samp.freq),
+                  ', Trend = ',r,' of ',length(r.true),
+                  ', n = ',n,' of ',length(sample.true),
+                  ', Frequency = ',f,' of ',length(sample.freq),
                   ', Years = ',t,' of ',length(yrs),'\n',sep='')
             } # close f loop
           } #close t loop
@@ -200,20 +202,29 @@ for(a in 1:length(alpha.true)) { #Density loop  1
 output.table$r.pctbias <- output.table$r.pctbias*100
 write.csv(output.table, paste(out.loc,'IMBCR trend sim.csv',sep=''), row.names = FALSE)
 # If loading from files:
-out.table<-read.csv(paste(out.loc,'IMBCR trend sim.csv',sep=''),header=TRUE)
+# read.csv(str_c(out.loc, "IMBCR trend sim_D1.csv"), header  = T, stringsAsFactors = F) %>%
+#   bind_rows(
+#     read.csv(str_c(out.loc, "IMBCR trend sim_D5.csv"), header  = T, stringsAsFactors = F)
+#   ) %>%
+#   bind_rows(
+#     read.csv(str_c(out.loc, "IMBCR trend sim_D20.csv"), header  = T, stringsAsFactors = F)
+#   ) %>%
+#   write.csv(str_c(out.loc, "IMBCR trend sim.csv"), row.names = F)
+  
+output.table<-read.csv(paste(out.loc,'IMBCR trend sim.csv',sep=''),header=TRUE)
 
-# sum.table <- output.table %>%
-#   dplyr::group_by(Alpha, Trend, Heterogeneity, Annual.var, N.samp, Years, Samp.freq) %>%
-#   summarise(r.bias.median = median(r.bias),
-#             r.pctbias.median = median(r.pctbias),
-#             #r.f.median = median(r.f),
-#             #r.f.LCI = quantile(r.f, prob = 0.025, type = 8),
-#             #r.f.UCI = quantile(r.f, prob = 0.975, type = 8),
-#             r.power = (sum(r.f >= 0.975) / n()) * 100,
-#             r.coverage = mean(r.coverage) * 100,
-#             r.RMSE = sqrt(mean(r.bias^2)), # When first troubleshooting, make sure there are no NAs.
-#             r.RMSE.pct = sqrt(mean((r.pctbias/100)^2)) * 100) # When first troubleshooting, make sure there are no NAs.
-# write.csv(sum.table, 'IMBCR trend sim summary.csv', row.names = F)
+sum.table <- output.table %>%
+  dplyr::group_by(Alpha, Trend, Heterogeneity, Annual.var, N.samp, Years, Samp.freq) %>%
+  summarise(r.bias.median = median(r.bias),
+            r.pctbias.median = median(r.pctbias),
+            #r.f.median = median(r.f),
+            #r.f.LCI = quantile(r.f, prob = 0.025, type = 8),
+            #r.f.UCI = quantile(r.f, prob = 0.975, type = 8),
+            r.power = (sum(r.f >= 0.975) / n()) * 100,
+            r.coverage = mean(r.coverage) * 100,
+            r.RMSE = sqrt(mean(r.bias^2)), # When first troubleshooting, make sure there are no NAs.
+            r.RMSE.pct = sqrt(mean((r.pctbias/100)^2)) * 100) # When first troubleshooting, make sure there are no NAs.
+write.csv(sum.table, 'IMBCR trend sim summary.csv', row.names = F)
 sum.table <- read.csv(str_c(out.loc, 'IMBCR trend sim summary.csv'), header = T, stringsAsFactors = F)
 
 

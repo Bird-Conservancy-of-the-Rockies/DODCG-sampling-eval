@@ -121,6 +121,18 @@ out["Total", "Points"] <- grab %>%
   select(TransectNum, Point) %>% distinct() %>%
   nrow()
 
+# Add proportion areas #
+veg <- foreign::read.dbf("C:/Users/Quresh.Latif/files/GIS/DOD/Vegetation_communites_utm13.dbf", as.is = T)
+
+out <- cbind(out, rep(NA, nrow(out)))
+dimnames(out)[[2]][ncol(out)] <- "Percent area"
+out["wetland_riparian", "Percent area"] <- round((sum(veg$Acres[which(veg$HabitatTyp == "wetland_riparian")]) / sum(veg$Acres)) * 100, digits = 1)
+out["Canyon", "Percent area"] <- round((sum(veg$Acres[which(veg$HabitatTyp == "canyon/woodland")]) / sum(veg$Acres)) * 100, digits = 1)
+out["Shrubland", "Percent area"] <- round((sum(veg$Acres[which(veg$HabitatTyp %in% c("shrubland", "shrubland/woodland"))]) / sum(veg$Acres)) * 100, digits = 1)
+out["Woodland", "Percent area"] <- round((sum(veg$Acres[which(veg$HabitatTyp %in% c("woodland", "shrubland/woodland"))]) / sum(veg$Acres)) * 100, digits = 1)
+out["Grassland", "Percent area"] <- round((sum(veg$Acres[which(veg$HabitatTyp == "grassland")]) / sum(veg$Acres)) * 100, digits = 1)
+out["Total", "Percent area"] <- 100
+
 write.csv(out, "Hab_summary_CG_GIS.csv", row.names = T)
 
 ###############################################################
